@@ -11,7 +11,10 @@ from email.mime.text import MIMEText
 
 import pandas as pd
 import requests
+import urllib3
 import xlsxwriter  # noqa: F401 – used via xlsxwriter engine
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # suppress SSL warnings
 
 # ── CONFIG (all values come from GitHub Secrets / env vars) ──
 FROM     = os.environ["EMAIL_FROM"]
@@ -48,23 +51,36 @@ SITES = [
     ("Spicenet",           "https://www.spicenet.info/"),
 ]
 
+# Browser-like headers so sites don't block the script as a bot
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    )
+}
+
 # ── 1. CHECK A SINGLE SITE (with retries) ────────────────────
 def check_site(index_name_url):
     idx, name, url = index_name_url
-    attempt, status, error, response_ms = 0, "Unreachable", "-", 0
+    status, error, response_ms = "Unreachable", "-", 0
 
     for attempt in range(1 + RETRIES):
         try:
             t0   = time.monotonic()
-            resp = requests.get(url, timeout=TIMEOUT, allow_redirects=True)
+            resp = requests.get(
+                url,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+                headers=HEADERS,
+                verify=False,          # skip SSL cert errors (some sites have expired certs)
+            )
             response_ms = round((time.monotonic() - t0) * 1000)
 
-            if resp.status_code < 400:
-                status = "Slow ⚠️" if response_ms > SLOW_MS else "Reachable"
-                error  = "-"
-                break                          # success — no more retries
-            else:
-                error = f"HTTP {resp.status_code}"
+            # Any HTTP response means the server is UP (even 4xx/5xx = server is responding)
+            status = "Slow ⚠️" if response_ms > SLOW_MS else "Reachable"
+            error  = f"HTTP {resp.status_code}" if resp.status_code >= 400 else "-"
+            break   # got a response — stop retrying
 
         except requests.exceptions.Timeout:
             error = "Timed out"
@@ -73,19 +89,11 @@ def check_site(index_name_url):
         except requests.exceptions.RequestException as e:
             error = str(e)[:60]
 
-        # Only retry if not the last attempt
         if attempt < RETRIES:
             print(f"  ↻ Retry {attempt + 1}/{RETRIES} for {name} ...")
             time.sleep(RETRY_WAIT)
 
-    # If still not reachable after all retries
-    if status == "Unreachable":
-        icon = "❌"
-    elif status.startswith("Slow"):
-        icon = "⚠️"
-    else:
-        icon = "✅"
-
+    icon = "❌" if status == "Unreachable" else ("⚠️" if status.startswith("Slow") else "✅")
     print(f"[{icon}] {name:25s} {status:15s} {response_ms:>6} ms  {error}")
     return (idx, name, url, status, response_ms, error)
 
@@ -174,27 +182,24 @@ down_names = df[df["Status"] == "Unreachable"]["Website Name"].tolist()
 
 subject = f"{'🚨 ALERT: ' if down_names else ''}Site Reachability Report – {today}"
 
-# ── Email body: only Reachable / Not Reachable — no slow mention ──
 if not down_names:
-    body = """
-<html><body style='font-family:Arial,sans-serif;font-size:14px'>
+    body = """<html><body style='font-family:Arial,sans-serif'>
 <p>Hello Team,</p>
-<p style='color:green;font-size:16px'><b>✅ All websites are reachable.</b></p>
-<p>Please find the detailed report in the attached Excel file.</p>
-<br><p>Best Regards,<br><b>Ajaykumar R</b><br>System Admin</p>
+<p style='color:green'><b>✅ All websites are reachable.</b></p>
+<p>Report is attached.</p>
+<p>Best Regards,<br><b>Ajaykumar R</b></p>
 </body></html>"""
 else:
     items = "".join(
-        f"<li style='color:red;margin:4px 0'><b>{s}</b> — Not Reachable</li>"
+        f"<li style='color:red'><b>{s}</b> — Not Reachable</li>"
         for s in down_names
     )
-    body = f"""
-<html><body style='font-family:Arial,sans-serif;font-size:14px'>
+    body = f"""<html><body style='font-family:Arial,sans-serif'>
 <p>Hello Team,</p>
 <p>The following site(s) are <b style='color:red'>not reachable</b>:</p>
-<ul style='line-height:1.8'>{items}</ul>
-<p style='color:#555'>Please check the attached Excel report for full details.</p>
-<br><p>Best Regards,<br><b>Ajaykumar R</b><br>System Admin</p>
+<ul>{items}</ul>
+<p>Report is attached.</p>
+<p>Best Regards,<br><b>Ajaykumar R</b></p>
 </body></html>"""
 
 msg = MIMEMultipart()
