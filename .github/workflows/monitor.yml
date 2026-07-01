@@ -1,0 +1,43 @@
+name: Site Reachability Monitor
+
+on:
+  # ── Runs automatically every day at 3:30 AM UTC (9:00 AM IST) ──
+  schedule:
+    - cron: '30 3 * * *'
+
+  # ── Also allows manual trigger from GitHub Actions UI ──
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    name: Check Sites & Send Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run site monitor
+        env:
+          EMAIL_FROM:     ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+          EMAIL_CC:       ${{ secrets.EMAIL_CC }}
+          EMAIL_APP_PASS: ${{ secrets.EMAIL_APP_PASS }}
+        run: python monitor.py
+
+      - name: Upload report as artifact
+        if: always()   # save the report even if email step failed
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-report-${{ github.run_id }}
+          path: site-report-*.xlsx
+          retention-days: 30
