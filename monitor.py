@@ -29,7 +29,7 @@ SITES = [
     ("Qatar Steel",        "https://www.qatarsteel.com.qa/"),
     ("Qcoat",              "https://www.qcoat.com.qa/"),
     ("Diyafah",            "https://www.diyafah.com/"),
-    ("Sriarunodayam",      "https://www.sriarunodayam.org/"),
+    ("Sriarunodayam",      "https://sriarunodayam.org/"),
     ("Pixint",             "https://www.pixint.com/"),
     ("Rarefly",            "https://www.rarefly.com/"),
     ("Shadesandlights",    "https://www.shadesandlights.com/"),
@@ -42,10 +42,9 @@ SITES = [
     ("Photoscanplus",      "https://photoscanplus.com/"),
     ("Lanternglobal",      "http://lanternglobal.com/"),
     ("Stellarixsolutions", "https://stellarixsolutions.com/"),
-    ("Ecliptasolutions",   "https://www.ecliptasolutions.com/"),
-    ("Kindernest",         "https://www.kindernest.in"),
+    ("Kindernest",         "https://kindernest.in/"),
     ("Rickgraffpaints",    "https://www.rickgraffpaints.com/"),
-    ("Greenleafchina",     "https://www.greenleafchina.com/"),
+    ("Greenleafchina",     "https://greenleafchina.com/"),
     ("Spicenet",           "https://www.spicenet.info/"),
 ]
 
@@ -172,62 +171,30 @@ to_list = [t.strip() for t in TO.split(",") if t.strip()]
 cc_list = [c.strip() for c in CC.split(",") if c.strip()]
 
 down_names = df[df["Status"] == "Unreachable"]["Website Name"].tolist()
-slow_names = df[df["Status"].str.startswith("Slow", na=False)]["Website Name"].tolist()
 
-has_alert = bool(down_names)
-subject   = f"{'🚨 ALERT: ' if has_alert else ''}Site Reachability Report – {today}"
+subject = f"{'🚨 ALERT: ' if down_names else ''}Site Reachability Report – {today}"
 
-# Build summary table for email
-table_rows = ""
-for _, row in df.iterrows():
-    color = "#C6EFCE" if row["Status"] == "Reachable" else \
-            "#FFEB9C" if str(row["Status"]).startswith("Slow") else "#FFC7CE"
-    table_rows += f"""
-    <tr style='background:{color}'>
-      <td style='padding:6px;border:1px solid #ccc'>{row['Website Name']}</td>
-      <td style='padding:6px;border:1px solid #ccc;text-align:center'>{row['Status']}</td>
-      <td style='padding:6px;border:1px solid #ccc;text-align:center'>{row['Response (ms)']} ms</td>
-      <td style='padding:6px;border:1px solid #ccc'>{row['Error']}</td>
-    </tr>"""
-
-down_alert = ""
-if down_names:
-    items = "".join(f"<li style='color:red'><b>{s}</b></li>" for s in down_names)
-    down_alert = f"<p>🚨 <b style='color:red'>Unreachable sites:</b></p><ul>{items}</ul>"
-
-slow_alert = ""
-if slow_names:
-    items = "".join(f"<li style='color:#b8860b'><b>{s}</b></li>" for s in slow_names)
-    slow_alert = f"<p>⚠️ <b style='color:#b8860b'>Slow sites (response &gt; {SLOW_MS}ms):</b></p><ul>{items}</ul>"
-
-body = f"""
+# ── Email body: only Reachable / Not Reachable — no slow mention ──
+if not down_names:
+    body = """
 <html><body style='font-family:Arial,sans-serif;font-size:14px'>
 <p>Hello Team,</p>
-
-<table style='border-collapse:collapse'>
-  <tr>
-    <td style='padding:6px 12px;background:#4CAF50;color:white;font-weight:bold;border-radius:4px'>✅ {up_count} Reachable</td>&nbsp;
-    <td style='padding:6px 12px;background:#FF9800;color:white;font-weight:bold;border-radius:4px'>⚠️ {slow_count} Slow</td>&nbsp;
-    <td style='padding:6px 12px;background:#f44336;color:white;font-weight:bold;border-radius:4px'>❌ {down_count} Down</td>&nbsp;
-    <td style='padding:6px 12px;background:#607D8B;color:white;font-weight:bold;border-radius:4px'>📋 {total} Total</td>
-  </tr>
-</table><br>
-
-{down_alert}
-{slow_alert}
-
-<table style='border-collapse:collapse;width:100%;margin-top:10px'>
-  <tr style='background:#D7E4BC'>
-    <th style='padding:8px;border:1px solid #ccc;text-align:left'>Website</th>
-    <th style='padding:8px;border:1px solid #ccc'>Status</th>
-    <th style='padding:8px;border:1px solid #ccc'>Response</th>
-    <th style='padding:8px;border:1px solid #ccc'>Error</th>
-  </tr>
-  {table_rows}
-</table>
-
-<br><p style='color:#555'>Full report with filters is attached as Excel.</p>
-<p>Best Regards,<br><b>Ajaykumar R</b><br>System Admin</p>
+<p style='color:green;font-size:16px'><b>✅ All websites are reachable.</b></p>
+<p>Please find the detailed report in the attached Excel file.</p>
+<br><p>Best Regards,<br><b>Ajaykumar R</b><br>System Admin</p>
+</body></html>"""
+else:
+    items = "".join(
+        f"<li style='color:red;margin:4px 0'><b>{s}</b> — Not Reachable</li>"
+        for s in down_names
+    )
+    body = f"""
+<html><body style='font-family:Arial,sans-serif;font-size:14px'>
+<p>Hello Team,</p>
+<p>The following site(s) are <b style='color:red'>not reachable</b>:</p>
+<ul style='line-height:1.8'>{items}</ul>
+<p style='color:#555'>Please check the attached Excel report for full details.</p>
+<br><p>Best Regards,<br><b>Ajaykumar R</b><br>System Admin</p>
 </body></html>"""
 
 msg = MIMEMultipart()
