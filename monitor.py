@@ -185,7 +185,7 @@ subject = f"{'🚨 ALERT: ' if down_names else ''}Site Reachability Report – {
 if not down_names:
     body = """<html><body style='font-family:Arial,sans-serif'>
 <p>Hello Team,</p>
-<p style='color:green'><b>✅ All websites are reachable.</b></p>
+<p style='color:green'><b> All websites are reachable.</b></p>
 <p>Report is attached.</p>
 <p>Best Regards,<br><b>Ajaykumar R</b></p>
 </body></html>"""
