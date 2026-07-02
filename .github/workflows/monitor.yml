@@ -1,11 +1,13 @@
 name: Site Reachability Monitor
 
 on:
-  # ── Runs automatically every day at 3:30 AM UTC (9:00 AM IST) ──
+  # ── Runs every day at 3:45 AM UTC = ~9:15 AM IST ──────────────
+  # NOTE: GitHub may delay scheduled runs by up to 15–30 min on busy days.
+  # Using :45 avoids the common :00/:30 congestion on GitHub's scheduler.
   schedule:
-    - cron: '30 3 * * *'
+    - cron: '45 3 * * *'
 
-  # ── Also allows manual trigger from GitHub Actions UI ──
+  # ── Manual trigger from GitHub Actions UI ──────────────────────
   workflow_dispatch:
 
 jobs:
@@ -35,7 +37,7 @@ jobs:
         run: python monitor.py
 
       - name: Upload report as artifact
-        if: always()   # save the report even if email step failed
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: site-report-${{ github.run_id }}
