@@ -38,10 +38,9 @@ Go to your repo → **Settings → Secrets and variables → Actions → New rep
 
 | Secret Name      | Value                          |
 |------------------|--------------------------------|
-| `EMAIL_FROM`     | `ajaykumar@pixint.com`         |
-| `EMAIL_TO`       | `ajaykumarpmk@gmail.com`       |
-| `EMAIL_CC`       | `ajaikumarpmk@gmail.com,ajaykumartrainee@gmail.com` |
-| `EMAIL_APP_PASS` | `bigp ruwz urzy zmgy`          |
+| `EMAIL_FROM`     | `[EMAIL_ADDRESS]`         |
+| `EMAIL_TO`       | `[EMAIL_ADDRESS]`       |
+| `EMAIL_APP_PASS` | `xxxx`          |
 
 > **Why secrets?** They are encrypted and never visible in logs. Your password is safe.
 
