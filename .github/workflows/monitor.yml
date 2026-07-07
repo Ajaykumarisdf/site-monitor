@@ -5,7 +5,7 @@ on:
   # NOTE: GitHub may delay scheduled runs by up to 15–30 min on busy days.
   # Using :45 avoids the common :00/:30 congestion on GitHub's scheduler.
   schedule:
-    - cron: '45 3 * * *'
+    - cron: '45 2 * * *'
 
   # ── Manual trigger from GitHub Actions UI ──────────────────────
   workflow_dispatch:
